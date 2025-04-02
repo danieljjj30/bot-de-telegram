@@ -10,7 +10,12 @@ from telegram.ext import (
 import logging
 from datetime import datetime, timedelta
 import random
+from flask import Flask
+app = Flask(__name__)
 
+@app.route('/')
+def home():
+    return "¡Bot activo!"
 # Configuración básica
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -253,4 +258,4 @@ def main():
     application.run_polling()
 
 if __name__ == '__main__':
-    main()
+    app.run()
