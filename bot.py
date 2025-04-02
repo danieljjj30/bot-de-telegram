@@ -1,3 +1,4 @@
+import os
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -10,6 +11,7 @@ from telegram.ext import (
 import logging
 from datetime import datetime, timedelta
 import random
+from flask import Flask, request
 
 # Configuración básica
 logging.basicConfig(
@@ -18,13 +20,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Configuración de la aplicación Flask para Render
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "¡Sweet Spot Bot está activo! 🍰"
+
 # Estados de la conversación
 WAITING_RESPONSE = 1
 
 # Configuración anti-spam
-MAX_REPEATED_MESSAGES = 3  # Máximo de mensajes idénticos consecutivos
-MESSAGE_TIME_WINDOW = 10   # Segundos para considerar mensajes como spam
-COOLDOWN_TIME = 30         # Segundos de cooldown después de spam
+MAX_REPEATED_MESSAGES = 3
+MESSAGE_TIME_WINDOW = 10
+COOLDOWN_TIME = 30
 
 # Datos de tu emprendimiento con respuestas más conversacionales
 RESPUESTAS = {
@@ -235,8 +244,14 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Ocurrió un error inesperado. Por favor intenta nuevamente más tarde.")
 
 def main():
-    application = Application.builder().token("7841638412:AAGso5OXD-tsQhRJxNPXH1LTHH66XzQ_S0g").build()
+    # Configuración para Render
+    TOKEN = os.getenv('TELEGRAM_TOKEN', '7841638412:AAGso5OXD-tsQhRJxNPXH1LTHH66XzQ_S0g')
+    PORT = int(os.getenv('PORT', 5000))
+    WEBHOOK_URL = os.getenv('WEBHOOK_URL')
     
+    application = Application.builder().token(TOKEN).build()
+    
+    # Handlers
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -248,9 +263,20 @@ def main():
     
     application.add_handler(conv_handler)
     application.add_error_handler(error_handler)
-    
-    logger.info("Bot iniciado. Presiona Ctrl+C para detenerlo.")
-    application.run_polling()
+
+    # Modo webhook para Render
+    if WEBHOOK_URL:
+        logger.info("Iniciando en modo webhook...")
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            webhook_url=WEBHOOK_URL,
+            secret_token='SECRETO_UNICO'
+        )
+    else:
+        # Modo polling para desarrollo local
+        logger.info("Iniciando en modo polling...")
+        application.run_polling()
 
 if __name__ == '__main__':
     main()
